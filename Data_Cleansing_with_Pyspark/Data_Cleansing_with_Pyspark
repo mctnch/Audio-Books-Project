@@ -20,3 +20,44 @@ dt = spark.read.csv('/content/ws2_data.csv', header = True, inferSchema = True, 
 
 
 #Data-Profiling
+print(dt)
+dt.show()
+dt.dtypes
+dt.summary().show()
+dt.describe().show()
+
+#Find Missing value
+dt.summary("count").show()
+dt.where(dt.user_id.isNull() ).show()
+
+#Data Cleansing
+
+#Change Data Type
+dt.show(truncate=False)
+dt.printSchema()
+from pyspark.sql import functions as f
+dt_clean = dt.withColumn("timestamp",f.to_timestamp(dt.timestamp, 'yyyy-MM-dd HH:mm:ss'))
+
+#Anomalies Check
+#Syntactical Anomalies
+dt_clean.select("Country").distinct().count()
+dt_clean.select("Country").distinct().sort("Country").show( 58, False )
+dt_clean.where(dt_clean['Country'] == 'Japane').show()
+from pyspark.sql.functions import when
+dt_clean_country = dt_clean.withColumn("CountryUpdate", when(dt_clean['Country'] == 'Japane', 'Japan').otherwise(dt_clean['Country'
+dt_clean = dt_clean_country.drop("Country").withColumnRenamed('CountryUpdate', 'Country')
+#Semantic Anomalies
+dt_clean.select("user_id").show(10)
+dt_clean.where(dt_clean["user_id"].rlike("^[a-z0-9]{8}$")).count()
+dt_correct_userid = dt_clean.filter(dt_clean["user_id"].rlike("^[a-z0-9]{8}$"))
+dt_incorrect_userid = dt_clean.subtract(dt_correct_userid)
+dt_incorrect_userid.show(10)
+dt_clean_userid = dt_clean.withColumn("user_id_update", when(dt_clean['user_id'] == 'ca86d17200', 'ca86d172').otherwise(dt_clean['user_id']))
+dt_clean = dt_clean_userid.drop("user_id").withColumnRenamed('user_id_update', 'user_id')
+#Modify Missing Values
+from pyspark.sql.functions import col, sum
+dt_nulllist = dt_clean.select([ sum(col(colname).isNull().cast("int")).alias(colname) for colname in dt_clean.columns ])
+dt_nulllist.show()
+dt_clean.summary("count").show()
+
+dt_clean.write.csv('Cleaned_data.csv', header = True)
