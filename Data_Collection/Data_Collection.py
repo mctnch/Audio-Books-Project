@@ -18,7 +18,8 @@ connection = pymysql.connect(host = Config.MYSQL_HOST,
 connection cursor = connection.cursor() 
 cursor.execute("show tables;") 
 tables = cursor.fetchall() 
-cursor.close() print(tables)  
+cursor.close() 
+print(tables)  
 
 import pandas as pd 
 sql = "SELECT * FROM audible_transaction" 
